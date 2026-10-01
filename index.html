@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Granstuveien">
+<meta name="theme-color" content="#eef1f0">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Granstuveien 11</title>
+<style>
+:root {
+  --bg: #eef1f0;
+  --surface: #fbfcfb;
+  --ink: #1b2320;
+  --muted: #5f6b67;
+  --line: #d8dedb;
+  --accent: #2f6f5e;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcebe5;
+  --ok: #2c7a4b;
+  --ok-soft: #dff0e5;
+  --warn: #9a5d00;
+  --warn-soft: #f8ead0;
+  --bad: #b3261e;
+  --bad-soft: #f8dcd9;
+  --radius: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111614;
+    --surface: #1a211e;
+    --ink: #e6ece9;
+    --muted: #93a19b;
+    --line: #2a3430;
+    --accent: #6fbfa6;
+    --accent-ink: #0d1411;
+    --accent-soft: #1f3a31;
+    --ok: #6fcf94;
+    --ok-soft: #173325;
+    --warn: #f0b64f;
+    --warn-soft: #3a2c12;
+    --bad: #f28b82;
+    --bad-soft: #3d1c1a;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  -webkit-text-size-adjust: 100%;
+  font-variant-numeric: tabular-nums;
+}
+button { font: inherit; color: inherit; }
+.wrap { max-width: 1400px; margin: 0 auto; }
+
+header.top {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+  padding-block: 18px 14px;
+}
+header.top h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+.clock { font-size: 22px; font-weight: 600; color: var(--muted); }
+.status { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.dot.stale { background: var(--warn); }
+.dot.err { background: var(--bad); }
+.iconbtn { background: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; color: var(--muted); font-size: 13px; }
+
+/* Spalter i stedet for rutenett: kortene legger seg tett uten hull */
+.grid { columns: 3 340px; column-gap: 14px; }
+section.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0;
+  break-inside: avoid; -webkit-column-break-inside: avoid; margin-bottom: 14px; width: 100%;
+}
+section.card h2 {
+  margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+  background: var(--accent-soft); color: var(--accent);
+}
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.off { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+
+.rows { display: flex; flex-direction: column; }
+.row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  padding-block: 9px; border-top: 1px solid var(--line);
+}
+.row:first-child { border-top: 0; padding-top: 0; }
+.row .name { font-weight: 500; overflow-wrap: anywhere; }
+.row .sub { font-size: 12.5px; color: var(--muted); }
+.row .vals { display: flex; gap: 14px; align-items: baseline; justify-content: flex-end; flex-wrap: wrap; }
+.v { text-align: right; }
+.v b { font-size: 17px; font-weight: 600; }
+.v small { color: var(--muted); font-size: 12px; margin-left: 1px; }
+.v.ok b { color: var(--ok); } .v.warn b { color: var(--warn); } .v.bad b { color: var(--bad); }
+
+.hero { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.hero .big { font-size: 40px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
+.hero .unit { font-size: 16px; color: var(--muted); }
+
+.people { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.person { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.person .who { font-weight: 600; }
+.person .where { font-size: 12.5px; color: var(--muted); }
+.person.home { border-color: var(--ok); background: var(--ok-soft); }
+.person.home .where { color: var(--ok); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 10px 12px; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper button {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg);
+  font-size: 20px; line-height: 1; cursor: pointer; display: grid; place-items: center;
+}
+.stepper button:active { background: var(--accent-soft); }
+.stepper button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stepper .set { min-width: 52px; text-align: center; font-size: 17px; font-weight: 600; }
+.stepper .set.pending { color: var(--accent); }
+.stats.two { grid-template-columns: repeat(2, 1fr); }
+.quick {
+  display: grid; gap: 8px; margin-bottom: 14px; max-width: 760px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+}
+.quick:has(#garageCtl[hidden]):has(#vacCtl[hidden]):has(#mowCtl[hidden]):has(#plugCtl[hidden]) { display: none; }
+#plugBtn.on { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.action { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.action button {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px 8px;
+  font-weight: 600; cursor: pointer; min-height: 48px;
+}
+.action button:disabled { opacity: 0.55; cursor: progress; }
+.action button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.action .note { padding-inline: 4px; }
+#vacBtn.running, #mowBtn.running { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+#mowBtn.armed { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+#garageBtn.armed { background: var(--warn-soft); color: var(--warn); border-color: var(--warn); }
+.stat .k { font-size: 12px; color: var(--muted); }
+.stat .n { font-size: 18px; font-weight: 600; }
+
+.modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+#alarmModes { grid-template-columns: repeat(3, 1fr); }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.modes button {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 12px 6px;
+  font-weight: 600; cursor: pointer; min-height: 48px;
+}
+.modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.modes button:disabled { opacity: 0.55; cursor: progress; }
+.modes button:focus-visible, .iconbtn:focus-visible, .setup button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.note { font-size: 12.5px; color: var(--muted); margin: 0; }
+.note.err { color: var(--bad); }
+
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; width: 64px; }
+.bar i { display: block; height: 100%; background: var(--ok); }
+.bar.warn i { background: var(--warn); } .bar.bad i { background: var(--bad); }
+
+.empty { color: var(--muted); font-size: 14px; }
+
+footer.foot {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding-block: 4px 8px; color: var(--muted); font-size: 13px;
+}
+.setup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 320px; max-width: 520px; }
+.setup input {
+  font: inherit; font-size: 14px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); flex: 1 1 180px; min-width: 0;
+}
+.setup button { padding: 6px 12px; border-radius: 8px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; cursor: pointer; font-size: 13px; }
+.setup .err { flex-basis: 100%; }
+@media (prefers-reduced-motion: no-preference) { .modes button { transition: background .15s, color .15s; } }
+/* Dra ned for å oppdatere */
+#ptr {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 10;
+  transform: translate(-50%, -60px); opacity: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 14px; font-size: 13px; color: var(--muted); pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+#ptr.ready { color: var(--accent); border-color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { #ptr.snap { transition: transform .2s, opacity .2s; } }
+</style>
+</head>
+<body>
+<div id="ptr" aria-hidden="true">Dra ned for å oppdatere</div>
+<div class="wrap">
+  <div id="app">
+    <header class="top">
+      <h1>Granstuveien 11</h1>
+      <span class="clock" id="clock"></span>
+      <span class="status"><span class="dot" id="dot"></span><span id="updated">Venter på API-nøkkel</span></span>
+    </header>
+    <div class="quick">
+      <div class="action" id="garageCtl" hidden>
+        <button type="button" id="garageBtn">Åpne garasjen</button>
+        <p class="note" id="garageNote" hidden></p>
+      </div>
+      <div class="action" id="vacCtl" hidden>
+        <button type="button" id="vacBtn">Start støvsuger</button>
+        <p class="note" id="vacNote"></p>
+      </div>
+      <div class="action" id="plugCtl" hidden>
+        <button type="button" id="plugBtn">Kjøkkenplugg</button>
+        <p class="note" id="plugNote"></p>
+      </div>
+      <div class="action" id="mowCtl" hidden>
+        <button type="button" id="mowBtn">Start klipper</button>
+        <p class="note" id="mowNote"></p>
+      </div>
+    </div>
+    <main class="grid">
+      <section class="card" id="c-home"><h2>Hvem er hjemme <span id="homePill"></span></h2><div class="people" id="people"></div></section>
+      <section class="card"><h2>Innemiljø</h2><div class="rows" id="climate"></div></section>
+      <section class="card"><h2>Ventilasjon · Flexit <span id="fanPill"></span></h2>
+        <div class="modes" id="modes"></div>
+        <p class="note" id="modeNote">Høy og Peis er midlertidige modus i Flexit og går tilbake av seg selv.</p>
+        <div class="stats" id="flexit"></div>
+      </section>
+      <section class="card"><h2>Sikkerhet <span class="pills"><span id="alarmPill"></span><span id="heimdallPill"></span></span></h2>
+        <div class="modes" id="alarmModes"></div>
+        <p class="note err" id="alarmAlert" hidden>🚨 Alarmen har gått!</p>
+        <p class="note" id="alarmNote" hidden></p>
+        <div class="rows" id="security"></div>
+      </section>
+      <section class="card"><h2>Strøm <span id="pricePill"></span></h2><div id="power"></div></section>
+      <section class="card"><h2>Varme</h2><div class="rows" id="heat"></div></section>
+      <section class="card"><h2>Batteri</h2><div class="rows" id="battery"></div></section>
+    </main>
+    <footer class="foot">
+      <button class="iconbtn" id="logout" type="button">API-nøkkel</button>
+      <form class="setup" id="setup" hidden>
+        <input id="token" type="password" placeholder="Lim inn API-nøkkel" aria-label="API-nøkkel" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+        <button type="submit">Lagre</button>
+        <span class="note err" id="setupErr"></span>
+      </form>
+    </footer>
+  </div>
+</div>
+
+<script>
+const ID = {
+  flexit: "3b8ce2ee-02ec-4c34-ae80-42081c759918",
+  people: [
+    ["iPhone Simen", "ac7f934f-54d6-43c9-afdc-d1c709b2ae59"],
+    ["iPhone Vibeke", "e811f4df-b68f-4723-927a-7024573b4eaf"],
+    ["Watch Åse", "172e86f3-85ef-4acc-884e-87bdfa95b909"],
+  ],
+  climate: [
+    ["Stue", "Netatmo", "e6652cb5-bded-4542-894e-81f6b8510fee"],
+    ["Loftstue", "Netatmo", "82e145cb-ffbb-463b-8b3c-e01654f9e1d5"],
+    ["Stue", "Sensibo", "d3dd1ecd-d33b-45d2-a971-d91fb6939605"],
+    ["Stue", "Sensibo romsensor", "3d82a974-c4de-4fdd-bde8-d0d8d61fa601"],
+    ["Loft", "Sensibo", "24895665-740a-4596-971d-6e653f8043b8"],
+    ["Åses rom", "Sensibo", "d97108d8-adbd-4231-a128-8ab44d4fffe5"],
+  ],
+  heat: [
+    ["Stue", "Toshiba varmepumpe", "eab30b1f-9682-4677-8c8d-c1c76bb78635", "hp"],
+    ["Loft", "Toshiba varmepumpe", "3cef43b5-7da4-4ade-9fa7-39330f206283", "hp"],
+    ["Bad 1. etg", "Varmekabel", "110cbe37-da98-4ae0-b25f-f0cf2d5dd278", "floor"],
+    ["Kjøkken", "Varmekabel", "3c55e00a-03be-462a-a964-50e1f7213343", "floor"],
+    ["Gang", "Varmekabel", "eaa2b9ea-1d32-47a8-8d7f-ca42ef2764d7", "floor"],
+    ["Bad 2. etg", "Termostat", "3f891f2e-3086-4e77-b979-9fff6981e41e", "thermo"],
+    ["Bad 3. etg", "Termostat", "083dd997-8ed9-45c8-a588-05f7eb171329", "thermo"],
+    ["Kontoret", "Mill", "5a692438-bfd5-42b7-8eba-b480a6f5d7d5", "mill"],
+    ["Oles rom", "Mill", "ea592d7e-27a3-4989-8a4a-36a50b1cbd1e", "mill"],
+  ],
+  office: "5a692438-bfd5-42b7-8eba-b480a6f5d7d5",
+  vacuum: "289a6873-aebc-43cc-82af-19760308e6e1",
+  mower: "e36cf19b-90a9-43dc-a6f2-9d7cc1cf0c61",
+  plug: "43185334-d1c6-4280-9117-44b536f451ae",
+  pulse: "fd0c56fd-ad75-42ee-a749-ccba8fad59c1",
+  price: "e05f798f-88fd-4de1-8493-6e0ba71a4de4",
+  easee: "1e5137f2-1ddd-42bd-9565-d6e5f9018cd5",
+  homely: "47b25110-ee4a-4b04-b81a-801175260ef0",
+  alarm: "d04178a0-5cdb-4265-b534-2f196e7ba950",
+  garage: "c6930fbd-3806-49ea-aba5-0b69b8e844b4",
+  doors: [
+    ["Verandadør 2. etg", "bc96583f-c9d9-4b93-859e-22c685cc30ab"],
+    ["Kjøkkendør", "b3dd7ce2-2a13-48ca-9c25-685ffe5d87ee"],
+    ["Gangdør", "e0cd23d7-3e85-49dc-be73-5b71d779ca16"],
+  ],
+  cameras: [
+    ["Inngangsdør", "19bd4326-8818-4a43-99ba-479ee692b7c3"],
+    ["Hage", "1d1e265c-0623-4664-ae5b-8ec26233ab9e"],
+    ["Garasje", "618e6979-b81d-44ea-b40a-f94dc9ad91ef"],
+  ],
+};
+const VAR_HOME = "Noen hjemme";
+// Netatmo-enheter (Stue, Loftstue, Ute, Regnmåler, Vindmåler) som reserve hvis driverId mangler
+const NETATMO_IDS = new Set([
+  "e6652cb5-bded-4542-894e-81f6b8510fee", "82e145cb-ffbb-463b-8b3c-e01654f9e1d5", "4535dbcd-8c11-4c05-a901-9863e4b65078",
+  "ba5a3559-88a2-47fc-a2e3-7b139702d24c", "e45848e3-21e2-44a9-9873-c2f777b80960",
+]);
+const FAN_MODES = [
+  ["home", "Hjemme", /^home$|hjemme/i],
+  ["high", "Høy", /high|høy/i],
+  ["away", "Borte", /away|borte/i],
+  ["fireplace", "Peis", /fire|peis/i],
+];
+const ALARM_MODES = [
+  ["disarmed", "Av"],
+  ["partially_armed", "Delvis"],
+  ["armed", "På"],
+];
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nf = (d) => new Intl.NumberFormat("nb-NO", { minimumFractionDigits: d, maximumFractionDigits: d });
+function num(v, d = 1) { return typeof v === "number" && isFinite(v) ? nf(d).format(v) : "–"; }
+
+let token = null;
+try { token = localStorage.getItem("homeyToken"); } catch (e) {}
+let devices = {}, vars = {}, lastOk = 0, timer = null, busy = false;
+let alarmBusy = false;
+
+const cap = (id, c) => devices[id]?.capabilitiesObj?.[c]?.value ?? null;
+const avail = (id) => devices[id] ? devices[id].available !== false : false;
+
+// På Mac-serveren (port 8765) går kallene via serveren. Andre steder (f.eks. gratis webhotell) går de rett til Homey Cloud.
+const API_BASE = location.port === "8765" ? "" : "https://6407149ecbd8490b8f7c8b95.connect.athom.com";
+async function api(path, opts = {}) {
+  const r = await fetch(API_BASE + path, { ...opts, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" } });
+  if (r.status === 401 || r.status === 403) throw Object.assign(new Error("auth"), { auth: true });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+async function load() {
+  if (busy) return;
+  busy = true;
+  try {
+    const [d, v] = await Promise.all([api("/api/manager/devices/device"), api("/api/manager/logic/variable")]);
+    devices = d; vars = v; lastOk = Date.now();
+    render();
+  } catch (e) {
+    if (e.auth) { showSetup("Homey godtok ikke nøkkelen. Sjekk at den har tilgangene Vis enheter, Kontroller enheter og Vis variabler."); return; }
+    $("dot").className = "dot err";
+    $("updated").textContent = "Får ikke kontakt med Homey";
+  } finally { busy = false; }
+}
+
+function v(val, unit, d, cls = "") {
+  return `<span class="v ${cls}"><b>${num(val, d)}</b><small>${unit}</small></span>`;
+}
+function row(name, sub, right) {
+  return `<div class="row"><div><div class="name">${esc(name)}</div>${sub ? `<div class="sub">${sub}</div>` : ""}</div><div class="vals">${right}</div></div>`;
+}
+const co2Cls = (x) => x == null ? "" : x < 800 ? "ok" : x < 1200 ? "warn" : "bad";
+const humCls = (x) => x == null ? "" : x >= 30 && x <= 60 ? "" : "warn";
+
+function render() {
+  // Hjemme
+  const homeVar = Object.values(vars).find((x) => x.name === VAR_HOME);
+  const anyHome = homeVar ? homeVar.value === true : null;
+  $("homePill").innerHTML = anyHome == null ? "" : anyHome ? `<span class="pill ok">Noen hjemme</span>` : `<span class="pill off">Ingen hjemme</span>`;
+  $("people").innerHTML = ID.people.map(([name, id]) => {
+    const on = cap(id, "connected") === true;
+    const ap = cap(id, "ap");
+    const floor = ap ? String(ap).replace(/^U6\+\s*/, "").replace(/\s+\./, ". ").trim() : "";
+    return `<div class="person ${on ? "home" : ""}"><span class="who">${esc(name.split(" ")[1])}</span><span class="where">${on ? "Hjemme" + (floor ? " · " + esc(floor) : "") : "Borte"}</span></div>`;
+  }).join("");
+
+  // Innemiljø
+  $("climate").innerHTML = ID.climate.map(([room, src, id]) => {
+    const co2 = cap(id, "measure_co2"), t = cap(id, "measure_temperature"), h = cap(id, "measure_humidity");
+    const right = (co2 != null ? v(co2, " ppm", 0, co2Cls(co2)) : "") + v(t, "°", 1) + v(h, "%", 0, humCls(h));
+    return row(room, esc(src) + (avail(id) ? "" : " · utilgjengelig"), right);
+  }).join("");
+
+  // Flexit
+  const f = ID.flexit, mode = cap(f, "fan_mode");
+  const enumVals = devices[f]?.capabilitiesObj?.fan_mode?.values || [];
+  const modes = FAN_MODES.map(([fallback, label, re]) => {
+    const hit = enumVals.find((x) => re.test(x.id) || re.test(x.title || ""));
+    return { id: hit ? hit.id : fallback, label, found: !!hit || !enumVals.length };
+  }).filter((m) => m.found);
+  const current = modes.find((m) => m.id === mode);
+  $("fanPill").innerHTML = `<span class="pill">${esc(current ? current.label : mode || "–")}</span>`;
+  $("modes").style.gridTemplateColumns = `repeat(${modes.length}, 1fr)`;
+  $("modes").innerHTML = modes.map((m) => `<button type="button" data-mode="${esc(m.id)}" aria-pressed="${m.id === mode}">${esc(m.label)}</button>`).join("");
+  const filter = devices[f]?.capabilitiesObj?.measure_hepa_filter;
+  const fv = filter?.value;
+  $("flexit").innerHTML = [
+    ["Tilluft", num(cap(f, "measure_temperature"), 1) + "°"],
+    ["Ute", num(cap(f, "measure_temperature.outdoor"), 1) + "°"],
+    ["Avtrekk", num(cap(f, "measure_temperature.extract"), 1) + "°"],
+    ["Vifte", num(cap(f, "measure_fan_speed_percent"), 0) + " %"],
+    ["Filter igjen", num(fv, 0) + " %"],
+    ["Settpunkt", num(cap(f, "target_temperature"), 0) + "°"],
+  ].map(([k, n]) => `<div class="stat"><div class="k">${k}</div><div class="n">${n}</div></div>`).join("");
+
+  // Varme
+  $("heat").innerHTML = ID.heat.map(([room, kind, id, type]) => {
+    if (!avail(id)) return row(room, esc(kind), `<span class="pill bad">Utilgjengelig</span>`);
+    const t = type === "floor" ? (cap(id, "measure_temperature.floor") || cap(id, "measure_temperature")) : cap(id, "measure_temperature");
+    const target = cap(id, "target_temperature");
+    let state = "";
+    const hpMap = { Heat: "Varmer", Cool: "Kjøler", Dry: "Avfukter", Fan: "Vifte", Auto: "Auto", Off: "Av" };
+    if (type === "hp") state = cap(id, "onoff") === false ? `<span class="pill off">Av</span>` : `<span class="pill">${esc(hpMap[cap(id, "measure_status")] || cap(id, "measure_status") || "På")}</span>`;
+    if (type === "floor") state = cap(id, "thermostat_state_IdleHeatCool") === "Heat" ? `<span class="pill warn">Varmer</span>` : `<span class="pill off">Hvile</span>`;
+    if (type === "mill") state = cap(id, "onoff") === false ? `<span class="pill off">Av</span>` : (cap(id, "measure_power") > 0 ? `<span class="pill warn">Varmer</span>` : `<span class="pill off">Hvile</span>`);
+    if (id === ID.office) {
+      const tc = devices[id]?.capabilitiesObj?.target_temperature || {};
+      officeLimits = { min: tc.min ?? 5, max: tc.max ?? 30, step: tc.step || 0.5 };
+      const shown = officePending ?? target;
+      const sub = esc(kind) + ` · nå ${num(t, 1)}°` + (officeMsg ? ` · ${esc(officeMsg)}` : "");
+      return row(room, sub, `${state}<span class="stepper">
+        <button type="button" data-step="-1" aria-label="Senk måltemperatur">−</button>
+        <span class="set ${officePending != null ? "pending" : ""}">${shown != null ? num(shown, officeLimits.step < 1 ? 1 : 0) + "°" : "–"}</span>
+        <button type="button" data-step="1" aria-label="Øk måltemperatur">+</button></span>`);
+    }
+    const sub = esc(kind) + (target != null ? ` · mål ${num(target, 0)}°` : "") + (type === "floor" && cap(id, "measure_power") > 0 ? ` · ${num(cap(id, "measure_power"), 0)} W` : "");
+    return row(room, sub, v(t, "°", 1) + state);
+  }).join("");
+
+  // Strøm
+  const p = ID.pulse, pr = ID.price, e = ID.easee;
+  const level = cap(pr, "price_level") || cap(pr, "measure_price_level");
+  const lvlMap = { VERY_CHEAP: ["Veldig billig", "ok"], CHEAP: ["Billig", "ok"], NORMAL: ["Normal", ""], EXPENSIVE: ["Dyrt", "warn"], VERY_EXPENSIVE: ["Veldig dyrt", "bad"] };
+  const [lvlText, lvlCls] = lvlMap[level] || [level || "", ""];
+  $("pricePill").innerHTML = level ? `<span class="pill ${lvlCls}">${esc(lvlText)}</span>` : "";
+  const amps = ["L1", "L2", "L3"].map((l) => [l, cap(p, "measure_current." + l)]).filter(([, a]) => a != null);
+  const chargerState = { plugged_out: "Ikke tilkoblet", plugged_in_charging: "Lader", plugged_in_paused: "Pause", plugged_in_discharging: "Tilkoblet", plugged_in_completed: "Ferdig" };
+  const cs = cap(e, "evcharger_charging_state");
+  const charging = cap(e, "evcharger_charging") === true;
+  $("power").innerHTML = `
+    <div class="hero"><span class="big">${num(cap(p, "measure_power"), 0)}</span><span class="unit">W nå</span></div>
+    <div class="stats two">
+      <div class="stat"><div class="k">I dag</div><div class="n">${num(cap(p, "meter_power"), 1)} kWh</div></div>
+      <div class="stat"><div class="k">Kostnad i dag</div><div class="n">${num(cap(p, "accumulatedCost"), 0)} kr</div></div>
+      <div class="stat"><div class="k">Pris nå</div><div class="n">${num(cap(pr, "measure_price_total"), 2)} kr</div></div>
+      <div class="stat"><div class="k">Pris i dag</div><div class="n">${num(cap(pr, "measure_price_lowest"), 2)}–${num(cap(pr, "measure_price_highest"), 2)}</div></div>
+    </div>
+    ${amps.length ? `<p class="note">Strøm per fase: ${amps.map(([l, a]) => `${l} ${num(a, 1)} A`).join(" · ")}</p>` : ""}
+    <div class="rows">${row("Elbillader", esc(chargerState[cs] || cap(e, "charger_status") || "–") + ` · sist ${num(cap(e, "meter_power.lastCharge"), 1)} kWh`,
+      (charging ? v(cap(e, "measure_power") / 1000, " kW", 1) : "") + `<span class="pill ${charging ? "ok" : "off"}">${charging ? "Lader" : "Lader ikke"}</span>`)}</div>`;
+
+  // Sikkerhet – Homely (kan ikke styres fra Homey, bare vises)
+  const alarm = cap(ID.homely, "homely_alarm_state");
+  const alarmText = cap(ID.homely, "homely_alarm_state_descr") || alarm || "–";
+  $("alarmPill").innerHTML = `<span class="pill ${alarm === "DISARMED" ? "off" : /ALARM/.test(alarm || "") ? "bad" : "ok"}">Homely: ${esc(alarmText)}</span>`;
+
+  // Sikkerhet – Heimdall (eget alarmsystem, styres herfra)
+  const hState = cap(ID.alarm, "homealarm_state");
+  const hTriggered = cap(ID.alarm, "alarm_heimdall") === true;
+  const hLabelMap = { armed: "På", partially_armed: "Delvis", disarmed: "Av" };
+  const hLabel = hLabelMap[hState] || hState || "–";
+  $("heimdallPill").innerHTML = avail(ID.alarm)
+    ? `<span class="pill ${hTriggered ? "bad" : hState === "disarmed" ? "off" : "ok"}">Heimdall: ${hTriggered ? "ALARM" : esc(hLabel)}</span>`
+    : "";
+  $("alarmAlert").hidden = !hTriggered;
+  if (!alarmBusy) {
+    $("alarmModes").innerHTML = ALARM_MODES.map(([id, label]) =>
+      `<button type="button" data-alarm="${id}" aria-pressed="${id === hState}">${label}</button>`).join("");
+  }
+  // Støvsuger
+  const vc = devices[ID.vacuum]?.capabilitiesObj || {};
+  $("vacCtl").hidden = !avail(ID.vacuum) || !(vc.clean_full && vc.clean_full.setable !== false);
+  const cleaning = vacuumOut();
+  if (!vacBusy) {
+    $("vacBtn").textContent = cleaning ? "Send støvsuger hjem" : "Start støvsuger";
+    $("vacBtn").classList.toggle("running", cleaning);
+  }
+  const vb = cap(ID.vacuum, "measure_battery");
+  const vacState = cap(ID.vacuum, "alarm_stuck") ? "Står fast" : cap(ID.vacuum, "alarm_problem") ? "Har et problem"
+    : cap(ID.vacuum, "is_cleaning") === true ? "Støvsuger nå" : cleaning ? "Ute av dokken"
+    : cap(ID.vacuum, "battery_charging_state") === "charging" ? "Lader i dokken" : "I dokken";
+  if (!vacMsg) $("vacNote").textContent = `Kaktus · ${vacState}` + (vb != null ? ` · ${num(vb, 0)} %` : "");
+  $("vacNote").className = "note" + (/fast|problem/.test(vacState) ? " err" : "");
+
+  // Kjøkkenplugg
+  $("plugCtl").hidden = false;
+  const plugAvail = avail(ID.plug);
+  const plugOn = cap(ID.plug, "onoff") === true;
+  if (!plugBusy) {
+    $("plugBtn").textContent = plugOn ? "Slå av kjøkkenplugg" : "Slå på kjøkkenplugg";
+    $("plugBtn").classList.toggle("on", plugOn);
+    $("plugBtn").disabled = !plugAvail;
+  }
+  const pw = cap(ID.plug, "measure_power");
+  if (!plugMsg) $("plugNote").textContent = plugAvail
+    ? `Kjøkken · ${plugOn ? "På" : "Av"}` + (plugOn && pw != null ? ` · ${num(pw, 0)} W` : "")
+    : "Kjøkken · Utilgjengelig";
+
+  // Gressklipper
+  const mc =devices[ID.mower]?.capabilitiesObj || {};
+  $("mowCtl").hidden = !avail(ID.mower) || !mc.start_button;
+  const ms = String(cap(ID.mower, "mower_state") || "").toLowerCase();
+  const mowAction = mowerAction(ms);
+  if (!mowBusy && !mowArmed) {
+    $("mowBtn").textContent = mowAction.label;
+    $("mowBtn").classList.toggle("running", ms === "mowing");
+  }
+  const mowStates = { docked: "I ladestasjonen", charging: "Lader", mowing: "Klipper", paused: "Pause", returning: "På vei hjem",
+    idle: "Klar", error: "Feil", stuck: "Står fast", offline: "Frakoblet" };
+  const mbat = cap(ID.mower, "measure_battery");
+  if (!mowMsg) $("mowNote").textContent = `${devices[ID.mower]?.name?.trim() || "Klipperen"} · ${mowStates[ms] || ms || "–"}` + (mbat != null ? ` · ${num(mbat, 0)} %` : "");
+  $("mowNote").className = "note" + (/error|stuck/.test(ms) ? " err" : "");
+
+  const g = cap(ID.garage, "garagedoor_closed");
+  const gCap = devices[ID.garage]?.capabilitiesObj?.garagedoor_closed;
+  $("garageCtl").hidden = !gCap || gCap.setable === false || !avail(ID.garage);
+  if (!garageArmed) $("garageBtn").textContent = g === false ? "Lukk garasjen" : "Åpne garasjen";
+  let sec = row("Garasjeport", "", g === true ? `<span class="pill ok">Lukket</span>` : g === false ? `<span class="pill bad">Åpen</span>` : "–");
+  sec += ID.doors.map(([name, id]) => {
+    const open = cap(id, "alarm_contact") === true;
+    return row(name, "Dørsensor" + (cap(id, "alarm_tamper") ? " · sabotasje" : ""), open ? `<span class="pill bad">Åpen</span>` : `<span class="pill ok">Lukket</span>`);
+  }).join("");
+  sec += ID.cameras.map(([name, id]) => {
+    if (!avail(id)) return row(name, "Kamera", `<span class="pill bad">Utilgjengelig</span>`);
+    const motion = cap(id, "NTFY_MOTION_DETECTION") === true;
+    const arm = cap(id, "CMD_SET_ARMING");
+    const armMap = { home: "Hjemme", away: "Borte", disarmed: "Avslått", schedule: "Plan", geo: "Geo" };
+    const sub = "Kamera" + (arm ? " · " + esc(armMap[arm] || arm) : "") + (cap(id, "measure_battery") != null ? ` · ${num(cap(id, "measure_battery"), 0)} %` : "");
+    const st = cap(id, "onoff") === false ? `<span class="pill off">Av</span>` : motion ? `<span class="pill warn">Bevegelse</span>` : `<span class="pill ok">På</span>`;
+    return row(name, sub, st);
+  }).join("");
+  $("security").innerHTML = sec;
+
+  // Batteri: sensorer under 50 % eller med batterivarsel.
+  // Netatmo-batterier varer svært lenge, så de vises først under 10 %.
+  const low = Object.values(devices).map((d) => {
+    const c = d.capabilitiesObj || {};
+    const pct = c.measure_battery?.value;
+    const flag = c.alarm_battery?.value === true;
+    const netatmo = String(d.driverId || d.driverUri || "").includes("com.netatmo") || NETATMO_IDS.has(d.id);
+    return { name: d.name.trim(), pct: typeof pct === "number" ? pct : null, flag, avail: d.available !== false, id: d.id, limit: netatmo ? 10 : 50 };
+  }).filter((x) => x.flag || (x.pct != null && x.pct < x.limit));
+  const doorName = Object.fromEntries(ID.doors.map(([n, id]) => [id, "Dørsensor " + n.toLowerCase()]));
+  low.sort((a, b) => (a.pct ?? -1) - (b.pct ?? -1));
+  $("battery").innerHTML = low.length ? low.map((x) => {
+    const cls = x.flag || (x.pct != null && x.pct <= Math.min(25, x.limit / 2)) ? "bad" : "warn";
+    const right = x.pct != null
+      ? `<span class="bar ${cls}"><i style="width:${Math.max(3, x.pct)}%"></i></span>${v(x.pct, " %", 0, cls)}`
+      : `<span class="pill bad">Bytt batteri</span>`;
+    const sub = [x.flag ? "Batterivarsel" : "", x.avail ? "" : "Utilgjengelig"].filter(Boolean).join(" · ");
+    return row(doorName[x.id] || x.name, sub, right);
+  }).join("") : `<p class="empty">Ingen batterier må byttes nå.</p>`;
+
+  $("dot").className = "dot";
+  $("updated").textContent = "Oppdatert " + new Date(lastOk).toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+$("modes").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button[data-mode]");
+  if (!b) return;
+  const all = [...$("modes").querySelectorAll("button")];
+  all.forEach((x) => (x.disabled = true));
+  $("modeNote").className = "note";
+  try {
+    await api(`/api/manager/devices/device/${ID.flexit}/capability/fan_mode`, { method: "PUT", body: JSON.stringify({ value: b.dataset.mode }) });
+    $("modeNote").textContent = "Flexit satt til " + b.textContent + ".";
+    await new Promise((r) => setTimeout(r, 800));
+    await load();
+  } catch (e) {
+    $("modeNote").className = "note err";
+    $("modeNote").textContent = e.auth ? "Nøkkelen mangler tilgangen Kontroller enheter." : "Klarte ikke å endre modus. Prøv igjen.";
+  } finally { all.forEach((x) => (x.disabled = false)); }
+});
+
+// Heimdall-alarmen: Av / Delvis / På sender modus med én gang.
+$("alarmModes").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button[data-alarm]");
+  if (!b) return;
+  const all = [...$("alarmModes").querySelectorAll("button")];
+  all.forEach((x) => (x.disabled = true));
+  alarmBusy = true;
+  $("alarmNote").hidden = true;
+  try {
+    await api(`/api/manager/devices/device/${ID.alarm}/capability/homealarm_state`, { method: "PUT", body: JSON.stringify({ value: b.dataset.alarm }) });
+    await new Promise((r) => setTimeout(r, 800));
+    await load();
+  } catch (e) {
+    $("alarmNote").hidden = false;
+    $("alarmNote").className = "note err";
+    $("alarmNote").textContent = e.auth ? "Nøkkelen mangler tilgangen Kontroller enheter." : "Alarmen svarte ikke. Prøv igjen.";
+  } finally { alarmBusy = false; all.forEach((x) => (x.disabled = false)); }
+});
+
+// Kontoret: − og + justerer målet, verdien sendes når du har sluttet å trykke i ett sekund.
+let officePending = null, officeTimer = null, officeMsg = "", officeLimits = { min: 5, max: 30, step: 0.5 };
+$("heat").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-step]");
+  if (!b) return;
+  const { min, max, step } = officeLimits;
+  const base = officePending ?? cap(ID.office, "target_temperature") ?? Math.round(cap(ID.office, "measure_temperature") ?? 20);
+  officePending = Math.min(max, Math.max(min, Math.round((base + Number(b.dataset.step) * step) / step) * step));
+  officeMsg = "";
+  render();
+  clearTimeout(officeTimer);
+  officeTimer = setTimeout(async () => {
+    const value = officePending;
+    try {
+      await api(`/api/manager/devices/device/${ID.office}/capability/target_temperature`, { method: "PUT", body: JSON.stringify({ value }) });
+      officeMsg = `satt til ${num(value, step < 1 ? 1 : 0)}°`;
+      setTimeout(() => { officeMsg = ""; render(); }, 6000);
+      await new Promise((r) => setTimeout(r, 1000));
+      officePending = null;
+      await load();
+    } catch (e) {
+      officeMsg = e.auth ? "mangler tilgang" : "klarte ikke å endre";
+      officePending = null;
+      render();
+    }
+  }, 1000);
+});
+
+// Støvsuger: starter full rengjøring, eller sender den hjem hvis den allerede støvsuger.
+let vacBusy = false, vacMsg = "";
+// Ute av dokken = støvsuger nå, eller står et sted i huset (pause, fast, ferdig uten å ha kjørt hjem).
+function vacuumOut() {
+  return cap(ID.vacuum, "is_cleaning") === true || cap(ID.vacuum, "dock") === false;
+}
+$("vacBtn").addEventListener("click", async () => {
+  const b = $("vacBtn");
+  const cleaning = vacuumOut();
+  const capId = cleaning ? "cancel_and_dock" : "clean_full";
+  vacBusy = true; b.disabled = true; b.textContent = cleaning ? "Sender hjem…" : "Starter…";
+  try {
+    await api(`/api/manager/devices/device/${ID.vacuum}/capability/${capId}`, { method: "PUT", body: JSON.stringify({ value: true }) });
+    vacMsg = cleaning ? "Kaktus er på vei hjem." : "Kaktus har startet.";
+  } catch (e) {
+    vacMsg = e.auth ? "Nøkkelen mangler tilgangen Kontroller enheter." : "Støvsugeren svarte ikke. Prøv igjen.";
+  }
+  $("vacNote").textContent = vacMsg;
+  vacBusy = false; b.disabled = false;
+  await new Promise((r) => setTimeout(r, 3000));
+  await load();
+  setTimeout(() => { vacMsg = ""; render(); }, 5000);
+});
+
+// Kjøkkenplugg: av/på med ett trykk.
+let plugBusy = false, plugMsg = "";
+$("plugBtn").addEventListener("click", async () => {
+  const b = $("plugBtn");
+  const on = cap(ID.plug, "onoff") === true;
+  plugBusy = true; b.disabled = true; b.textContent = on ? "Slår av…" : "Slår på…";
+  try {
+    await api(`/api/manager/devices/device/${ID.plug}/capability/onoff`, { method: "PUT", body: JSON.stringify({ value: !on }) });
+    await new Promise((r) => setTimeout(r, 800));
+    await load();
+  } catch (e) {
+    plugMsg = e.auth ? "Nøkkelen mangler tilgangen Kontroller enheter." : "Pluggen svarte ikke. Prøv igjen.";
+    $("plugNote").textContent = plugMsg;
+    setTimeout(() => { plugMsg = ""; render(); }, 5000);
+  } finally { plugBusy = false; b.disabled = false; render(); }
+});
+
+// Gressklipper: start krever to trykk (kniver), hjem/fortsett går på ett trykk.
+let mowBusy = false, mowMsg = "", mowArmed = null;
+function mowerAction(ms) {
+  if (ms === "mowing") return { cap: "dock_button", label: "Send klipper hjem", done: "Klipperen er på vei hjem." };
+  if (ms === "paused") return { cap: "resume_button", label: "Fortsett klipping", done: "Klipperen fortsetter." };
+  return { cap: "start_button", label: "Start klipper", done: "Klipperen har startet.", confirm: true };
+}
+$("mowBtn").addEventListener("click", async () => {
+  const b = $("mowBtn");
+  const act = mowerAction(String(cap(ID.mower, "mower_state") || "").toLowerCase());
+  if (act.confirm && !mowArmed) {
+    b.classList.add("armed"); b.textContent = "Trykk igjen for å starte";
+    mowArmed = setTimeout(() => { mowArmed = null; b.classList.remove("armed"); render(); }, 4000);
+    return;
+  }
+  clearTimeout(mowArmed); mowArmed = null; b.classList.remove("armed");
+  mowBusy = true; b.disabled = true; b.textContent = "Sender…";
+  try {
+    await api(`/api/manager/devices/device/${ID.mower}/capability/${act.cap}`, { method: "PUT", body: JSON.stringify({ value: true }) });
+    mowMsg = act.done;
+  } catch (e) {
+    mowMsg = e.auth ? "Nøkkelen mangler tilgangen Kontroller enheter." : "Klipperen svarte ikke. Prøv igjen.";
+  }
+  $("mowNote").textContent = mowMsg;
+  mowBusy = false; b.disabled = false;
+  await new Promise((r) => setTimeout(r, 3000));
+  await load();
+  setTimeout(() => { mowMsg = ""; render(); }, 5000);
+});
+
+// Garasjeport: første trykk ber om bekreftelse, andre trykk innen 4 sekunder sender kommandoen.
+let garageArmed = null;
+$("garageBtn").addEventListener("click", async () => {
+  const b = $("garageBtn"), note = $("garageNote");
+  const closed = cap(ID.garage, "garagedoor_closed") !== false;
+  const verb = closed ? "åpne" : "lukke";
+  if (!garageArmed) {
+    b.classList.add("armed");
+    b.textContent = `Trykk igjen for å ${verb}`;
+    garageArmed = setTimeout(() => { garageArmed = null; b.classList.remove("armed"); render(); }, 4000);
+    return;
+  }
+  clearTimeout(garageArmed); garageArmed = null;
+  b.classList.remove("armed"); b.disabled = true; b.textContent = closed ? "Åpner…" : "Lukker…";
+  note.hidden = false; note.className = "note";
+  try {
+    await api(`/api/manager/devices/device/${ID.garage}/capability/garagedoor_closed`, { method: "PUT", body: JSON.stringify({ value: !closed }) });
+    note.textContent = closed ? "Kommando sendt: åpne garasjeporten." : "Kommando sendt: lukke garasjeporten.";
+    await new Promise((r) => setTimeout(r, 1500));
+    await load();
+  } catch (e) {
+    note.className = "note err";
+    note.textContent = e.auth ? "Nøkkelen mangler tilgangen Kontroller enheter." : "Garasjeporten svarte ikke. Prøv igjen.";
+  } finally { b.disabled = false; render(); }
+});
+
+function tickClock() {
+  $("clock").textContent = new Date().toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  if (lastOk && Date.now() - lastOk > 60000) $("dot").className = "dot stale";
+}
+
+function start() {
+  $("setup").hidden = true; $("logout").hidden = false; $("setupErr").textContent = "";
+  $("updated").textContent = "Henter…";
+  load();
+  clearInterval(timer);
+  timer = setInterval(() => { if (!document.hidden) load(); }, 10000);
+}
+function showSetup(msg) {
+  $("logout").hidden = true; $("setup").hidden = false;
+  $("setupErr").textContent = msg || "";
+  if (msg) { clearInterval(timer); $("dot").className = "dot err"; $("updated").textContent = "Mangler gyldig API-nøkkel"; }
+}
+$("setup").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  token = $("token").value.trim();
+  try { localStorage.setItem("homeyToken", token); } catch (e) {}
+  $("token").value = "";
+  start();
+});
+$("logout").addEventListener("click", () => { showSetup(); $("token").focus(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && token) load(); });
+
+// Dra ned for å oppdatere: laster hele siden på nytt (nye data og nyeste versjon av dashboardet)
+(() => {
+  const ptr = $("ptr"), LIMIT = 80;
+  let startY = null, dist = 0;
+  window.addEventListener("touchstart", (e) => {
+    startY = window.scrollY <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null;
+    dist = 0; ptr.classList.remove("snap");
+  }, { passive: true });
+  window.addEventListener("touchmove", (e) => {
+    if (startY == null) return;
+    dist = Math.max(0, e.touches[0].clientY - startY);
+    if (window.scrollY > 0) { startY = null; dist = 0; }
+    const shown = Math.min(dist, LIMIT * 1.4);
+    ptr.style.transform = `translate(-50%, ${shown - 60}px)`;
+    ptr.style.opacity = String(Math.min(1, dist / LIMIT));
+    ptr.classList.toggle("ready", dist >= LIMIT);
+    ptr.textContent = dist >= LIMIT ? "Slipp for å oppdatere" : "Dra ned for å oppdatere";
+  }, { passive: true });
+  window.addEventListener("touchend", () => {
+    if (startY == null) return;
+    startY = null;
+    if (dist >= LIMIT) {
+      ptr.textContent = "Oppdaterer…";
+      location.reload();
+      return;
+    }
+    ptr.classList.add("snap");
+    ptr.style.transform = "translate(-50%, -60px)";
+    ptr.style.opacity = "0";
+  });
+})();
+
+tickClock();
+setInterval(tickClock, 10000);
+if (token) start(); else { showSetup(); $("dot").className = "dot stale"; }
+</script>
+</body>
+</html>
