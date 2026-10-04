@@ -235,6 +235,7 @@ footer.foot {
       <section class="card"><h2>Sikkerhet <span class="pills"><span id="alarmPill"></span><span id="heimdallPill"></span></span></h2>
         <div class="modes" id="alarmModes"></div>
         <p class="note err" id="alarmAlert" hidden>🚨 Alarmen har gått!</p>
+        <p class="note err" id="fireAlert" hidden></p>
         <p class="note" id="alarmNote" hidden></p>
         <div class="rows" id="security"></div>
       </section>
@@ -295,6 +296,11 @@ const ID = {
     ["Kjøkkendør", "b3dd7ce2-2a13-48ca-9c25-685ffe5d87ee"],
     ["Gangdør", "e0cd23d7-3e85-49dc-be73-5b71d779ca16"],
   ],
+  smoke: [
+    ["Røyk garasje", "2df5e79c-e08f-4f77-b14a-9a219277122e"],
+    ["Røyk soverom", "6bd77270-76d9-458b-a15a-a7abf899ee3e"],
+    ["Røyk loft", "d4560964-39c6-42b0-a72e-fa01d34cddfa"],
+  ],
   cameras: [
     ["Inngangsdør", "19bd4326-8818-4a43-99ba-479ee692b7c3"],
     ["Hage", "1d1e265c-0623-4664-ae5b-8ec26233ab9e"],
@@ -331,6 +337,9 @@ let alarmBusy = false;
 
 const cap = (id, c) => devices[id]?.capabilitiesObj?.[c]?.value ?? null;
 const avail = (id) => devices[id] ? devices[id].available !== false : false;
+// Siste gang enheten meldte en verdi (Homey merker ikke alltid døde Z-Wave-enheter som utilgjengelige)
+const lastSeen = (id) => Math.max(0, ...Object.values(devices[id]?.capabilitiesObj || {}).map((c) => Date.parse(c.lastUpdated) || 0));
+const STALE_MS = 12 * 3600 * 1000;
 
 // På Mac-serveren (port 8765) går kallene via serveren. Andre steder (f.eks. gratis webhotell) går de rett til Homey Cloud.
 const API_BASE = location.port === "8765" ? "" : "https://6407149ecbd8490b8f7c8b95.connect.athom.com";
@@ -408,6 +417,8 @@ function render() {
   // Varme
   $("heat").innerHTML = ID.heat.map(([room, kind, id, type]) => {
     if (!avail(id)) return row(room, esc(kind), `<span class="pill bad">Utilgjengelig</span>`);
+    const seen = lastSeen(id);
+    if (seen && Date.now() - seen > STALE_MS) return row(room, esc(kind) + " · sist meldt " + new Date(seen).toLocaleDateString("nb-NO", { day: "numeric", month: "short" }), `<span class="pill bad">Ikke tilgjengelig</span>`);
     const t = type === "floor" ? (cap(id, "measure_temperature.floor") || cap(id, "measure_temperature")) : cap(id, "measure_temperature");
     const target = cap(id, "target_temperature");
     let state = "";
@@ -460,7 +471,9 @@ function render() {
   const hState = cap(ID.alarm, "homealarm_state");
   const hTriggered = cap(ID.alarm, "alarm_heimdall") === true;
   const hLabelMap = { armed: "På", partially_armed: "Delvis", disarmed: "Av" };
-  const hLabel = hLabelMap[hState] || hState || "–";
+  const now = new Date(), mins = now.getHours() * 60 + now.getMinutes();
+  const night = mins >= 23 * 60 + 30 || mins < 6 * 60; // nattmodus-flowene kjører 23:30–06:00
+  const hLabel = hState === "partially_armed" && night ? "Natt" : hLabelMap[hState] || hState || "–";
   $("heimdallPill").innerHTML = avail(ID.alarm)
     ? `<span class="pill ${hTriggered ? "bad" : hState === "disarmed" ? "off" : "ok"}">Heimdall: ${hTriggered ? "ALARM" : esc(hLabel)}</span>`
     : "";
@@ -530,6 +543,17 @@ function render() {
     const sub = "Kamera" + (arm ? " · " + esc(armMap[arm] || arm) : "") + (cap(id, "measure_battery") != null ? ` · ${num(cap(id, "measure_battery"), 0)} %` : "");
     const st = cap(id, "onoff") === false ? `<span class="pill off">Av</span>` : motion ? `<span class="pill warn">Bevegelse</span>` : `<span class="pill ok">På</span>`;
     return row(name, sub, st);
+  }).join("");
+  // Røykvarslere (Homely) – varsling går via egne Brann-flows i Homey
+  const fires = ID.smoke.filter(([, id]) => cap(id, "alarm_fire") === true).map(([n]) => n.replace(/^Røyk\s*/, ""));
+  $("fireAlert").hidden = !fires.length;
+  $("fireAlert").textContent = fires.length ? "🔥 Røyk oppdaget: " + fires.join(", ") : "";
+  sec += ID.smoke.map(([name, id]) => {
+    if (!avail(id)) return row(name, "Røykvarsler", `<span class="pill bad">Utilgjengelig</span>`);
+    const fire = cap(id, "alarm_fire") === true;
+    const sub = "Røykvarsler" + (cap(id, "measure_temperature") != null ? ` · ${num(cap(id, "measure_temperature"), 1)}°` : "")
+      + (cap(id, "online") === false ? " · frakoblet" : "") + (cap(id, "alarm_battery") === true ? " · lavt batteri" : "");
+    return row(name, sub, fire ? `<span class="pill bad">🔥 RØYK</span>` : `<span class="pill ok">OK</span>`);
   }).join("");
   $("security").innerHTML = sec;
 
