@@ -321,7 +321,7 @@ const FAN_MODES = [
 ];
 const ALARM_MODES = [
   ["disarmed", "Av"],
-  ["partially_armed", "Delvis"],
+  ["partially_armed", "Natt"],
   ["armed", "På"],
 ];
 
@@ -470,10 +470,8 @@ function render() {
   // Sikkerhet – Heimdall (eget alarmsystem, styres herfra)
   const hState = cap(ID.alarm, "homealarm_state");
   const hTriggered = cap(ID.alarm, "alarm_heimdall") === true;
-  const hLabelMap = { armed: "På", partially_armed: "Delvis", disarmed: "Av" };
-  const now = new Date(), mins = now.getHours() * 60 + now.getMinutes();
-  const night = mins >= 23 * 60 + 30 || mins < 6 * 60; // nattmodus-flowene kjører 23:30–06:00
-  const hLabel = hState === "partially_armed" && night ? "Natt" : hLabelMap[hState] || hState || "–";
+  const hLabelMap = { armed: "På", partially_armed: "Natt", disarmed: "Av" };
+  const hLabel = hLabelMap[hState] || hState || "–";
   $("heimdallPill").innerHTML = avail(ID.alarm)
     ? `<span class="pill ${hTriggered ? "bad" : hState === "disarmed" ? "off" : "ok"}">Heimdall: ${hTriggered ? "ALARM" : esc(hLabel)}</span>`
     : "";
@@ -598,7 +596,7 @@ $("modes").addEventListener("click", async (ev) => {
   } finally { all.forEach((x) => (x.disabled = false)); }
 });
 
-// Heimdall-alarmen: Av / Delvis / På sender modus med én gang.
+// Heimdall-alarmen: Av / Natt / På sender modus med én gang.
 $("alarmModes").addEventListener("click", async (ev) => {
   const b = ev.target.closest("button[data-alarm]");
   if (!b) return;
